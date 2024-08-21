@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Create a Quiz</h1>
+        <form id="quizForm">
+            <div id="questionsContainer"></div>
+            <button type="button" onclick="addQuestion()">Add Question</button>
+            <button type="button" onclick="exportQuiz()">Export Quiz</button>
+        </form>
+
+        <h2>Quiz Preview:</h2>
+        <pre id="quizPreview"></pre>
+
+        <a href="index.html" class="nav-link">Back to Home</a>
+        <a href="play.html" class="nav-link">Go to Play Quiz</a>
+    </div>
+
+    <script>
+        let questions = [];
+        let questionCount = 0;
+
+        function addQuestion() {
+            questionCount++;
+            const questionContainer = document.createElement('div');
+            questionContainer.className = 'question';
+            questionContainer.id = `question${questionCount}`;
+
+            questionContainer.innerHTML = `
+                <label for="questionTitle${questionCount}">Question Title ${questionCount}:</label>
+                <input type="text" id="questionTitle${questionCount}" placeholder="Enter the question or context" required><br><br>
+
+                <label for="questionText${questionCount}">Question ${questionCount}:</label>
+                <input type="text" id="questionText${questionCount}" placeholder="Enter the question text" required><br><br>
+
+                <label for="questionType${questionCount}">Question Type:</label>
+                <select id="questionType${questionCount}" onchange="handleQuestionTypeChange(${questionCount})" required>
+                    <option value="">Select Type</option>
+                    <option value="multipleChoice">Multiple Choice</option>
+                    <option value="multipleChoiceImage">Multiple Choice with Images</option>
+                </select><br><br>
+
+                <div id="optionsContainer${questionCount}" class="hidden">
+                    <div id="options${questionCount}">
+                        <!-- Options will be added here -->
+                    </div>
+                    <input type="file" id="imageUpload${questionCount}" accept="image/*" class="hidden" onchange="handleImageUpload(event, ${questionCount})">
+                </div>
+
+                <div id="correctAnswerContainer${questionCount}" class="hidden">
+                    <label>Correct Answer:</label>
+                    <div id="correctAnswer${questionCount}" class="correct-answer">
+                        <!-- Correct answer options will be added here -->
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('questionsContainer').appendChild(questionContainer);
+        }
+
+        function handleQuestionTypeChange(questionId) {
+            const type = document.getElementById(`questionType${questionId}`).value;
+            const optionsContainer = document.getElementById(`optionsContainer${questionId}`);
+            const optionsDiv = document.getElementById(`options${questionId}`);
+            const correctAnswerContainer = document.getElementById(`correctAnswerContainer${questionId}`);
+            const correctAnswerDiv = document.getElementById(`correctAnswer${questionId}`);
+
+            optionsDiv.innerHTML = ''; // Clear previous options
+            correctAnswerDiv.innerHTML = ''; // Clear previous correct answer options
+
+            if (type === 'multipleChoice' || type === 'multipleChoiceImage') {
+                optionsContainer.classList.remove('hidden');
+                correctAnswerContainer.classList.remove('hidden');
+                addOptionFields(type, questionId);
+            } else {
+                optionsContainer.classList.add('hidden');
+                correctAnswerContainer.classList.add('hidden');
+            }
+        }
+
+        function addOptionFields(type, questionId) {
+            const optionsDiv = document.getElementById(`options${questionId}`);
+            let optionsHTML = '';
+
+            for (let i = 0; i < 4; i++) { // Assuming 4 options
+                optionsHTML += `
+                    <div class="option">
+                        <input type="text" id="option${questionId}_${i}" placeholder="Option ${i + 1}">
+                        ${type === 'multipleChoiceImage' ? '<input type="file" class="imageUpload" accept="image/*" onchange="handleImageUpload(event, ' + questionId + ', ' + i + ')">' : ''}
+                    </div>
+                `;
+            }
+
+            optionsDiv.innerHTML = optionsHTML;
+            // Add radio buttons for correct answer
+            const correctAnswerDiv = document.getElementById(`correctAnswer${questionId}`);
+            optionsDiv.querySelectorAll('input[type=text]').forEach((input, index) => {
+                correctAnswerDiv.innerHTML += `
+                    <label class="option"><input type="radio" name="correctAnswer${questionId}" value="${index}"> Option ${index + 1}</label><br>
+                `;
+            });
+        }
+
+        function handleImageUpload(event, questionId, optionIndex) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onloadend = function() {
+                const imageBase64 = reader.result;
+                const optionInput = document.getElementById(`option${questionId}_${optionIndex}`);
+                const imgTag = document.createElement('img');
+                imgTag.src = imageBase64;
+
+                optionInput.parentElement.appendChild(imgTag);
+                optionInput.value = imageBase64; // Save base64 to the option input
+            };
+
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function exportQuiz() {
+            const quiz = [];
+
+            for (let i = 1; i <= questionCount; i++) {
+                const questionTitle = document.getElementById(`questionTitle${i}`).value;
+                const questionText = document.getElementById(`questionText${i}`).value;
+                const questionType = document.getElementById(`questionType${i}`).value;
+                const options = [];
+                let correctAnswer = null;
+
+                if (questionType === 'multipleChoice' || questionType === 'multipleChoiceImage') {
+                    const optionElements = document.querySelectorAll(`#options${i} .option input[type=text]`);
+                    optionElements.forEach((option, index) => {
+                        const base64Image = option.value;
+                        if (base64Image) {
+                            options.push(base64Image);
+                        } else {
+                            options.push(option.value);
+                        }
+                        // Get correct answer
+                        if (document.querySelector(`input[name="correctAnswer${i}"][value="${index}"]`).checked) {
+                            correctAnswer = index;
+                        }
+                    });
+                }
+
+                quiz.push({
+                    questionTitle,
+                    questionText,
+                    questionType,
+                    options,
+                    correctAnswer
+                });
+            }
+
+            const quizBase64 = btoa(JSON.stringify(quiz));
+            document.getElementById('quizPreview').textContent = quizBase64;
+        }
+    </script>
+</body>
+</html>

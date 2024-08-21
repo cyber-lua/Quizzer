@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Play a Quiz</h1>
+        <label for="quizInput">Enter Quiz QuizCode:</label>
+        <textarea id="quizInput" rows="10" placeholder="Paste your QuizCode" style="width: 100%;"></textarea>
+        <button type="button" onclick="loadQuiz()">Load Quiz</button>
+
+        <div id="quizContainer" class="hidden">
+            <div id="questionsPlayContainer"></div>
+            <button type="button" onclick="submitQuiz()">Submit Quiz</button>
+        </div>
+
+        <div id="victoryScreen" class="hidden">
+            <h2>Victory!</h2>
+            <p id="score"></p>
+            <a href="index.html" class="nav-link">Back to Home</a>
+            <a href="create.html" class="nav-link">Go to Create Quiz</a>
+        </div>
+    </div>
+
+    <script>
+        let quizData = [];
+
+        function loadQuiz() {
+            const base64String = document.getElementById('quizInput').value;
+            try {
+                quizData = JSON.parse(atob(base64String));
+                displayQuiz(quizData);
+                document.getElementById('quizContainer').classList.remove('hidden');
+                document.getElementById('victoryScreen').classList.add('hidden');
+            } catch (error) {
+                alert('Invalid Base64 string or quiz format.');
+            }
+        }
+
+        function displayQuiz(quiz) {
+            const container = document.getElementById('questionsPlayContainer');
+            container.innerHTML = ''; // Clear previous questions
+
+            quiz.forEach((q, index) => {
+                let questionHTML = `
+                    <div class="question">
+                        <h3>${q.questionTitle}</h3>
+                        <p>${q.questionText}</p>
+                `;
+
+                if (q.questionType === 'multipleChoice' || q.questionType === 'multipleChoiceImage') {
+                    q.options.forEach((option, i) => {
+                        if (q.questionType === 'multipleChoiceImage' && option.startsWith('data:image/')) {
+                            questionHTML += `
+                                <label class="option">
+                                    <input type="radio" name="question${index}" value="${i}">
+                                    <img src="${option}" alt="Option ${i + 1}" class="option-image">
+                                </label><br>
+                            `;
+                        } else {
+                            questionHTML += `
+                                <label class="option">
+                                    <input type="radio" name="question${index}" value="${i}">
+                                    ${option}
+                                </label><br>
+                            `;
+                        }
+                    });
+                }
+
+                questionHTML += '</div>';
+                container.innerHTML += questionHTML;
+            });
+        }
+
+        function submitQuiz() {
+            let score = 0;
+            const questions = document.querySelectorAll('.question');
+
+            questions.forEach((question, index) => {
+                const selectedOption = document.querySelector(`input[name="question${index}"]:checked`);
+                const correctAnswer = quizData[index].correctAnswer;
+                
+                if (selectedOption && parseInt(selectedOption.value) === correctAnswer) {
+                    score++;
+                }
+            });
+
+            showVictoryScreen(score);
+        }
+
+        function showVictoryScreen(score) {
+            document.getElementById('quizContainer').classList.add('hidden');
+            document.getElementById('victoryScreen').classList.remove('hidden');
+            document.getElementById('score').textContent = `Your Score: ${score} / ${quizData.length}`;
+        }
+    </script>
+</body>
+</html>
